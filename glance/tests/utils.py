@@ -122,6 +122,33 @@ def execute(cmd, raise_error=True):
     return exitcode, out, err
 
 
+def find_executable(cmdname):
+    """
+    Searches the path for a given cmdname.  Returns an absolute
+    filename if an executable with the given name exists in the path,
+    or None if one does not.
+
+    :param cmdname: The bare name of the executable to search for
+    """
+
+    # Keep an eye out for the possibility of an absolute pathname
+    if os.path.isabs(cmdname):
+        return cmdname
+
+    # Get a list of the directories to search
+    path = ([os.path.join(os.getcwd(), 'bin')] +
+            os.environ['PATH'].split(os.pathsep))
+
+    # Search through each in turn
+    for elem in path:
+        full_path = os.path.join(elem, cmdname)
+        if os.access(full_path, os.X_OK):
+            return full_path
+
+    # No dice...
+    return None
+
+
 def get_unused_port():
     """
     Returns an unused port on localhost.
