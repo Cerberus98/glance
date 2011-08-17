@@ -20,6 +20,7 @@
 import datetime
 import os
 import shutil
+import time
 
 from glance.tests import functional
 from glance.tests.utils import find_executable
@@ -35,6 +36,8 @@ class KeystoneServer(functional.Server):
         super(KeystoneServer, self).__init__(test_dir, port)
         self.server_control = server_control
         self.server_name = server_name
+        self.auth_port = auth_port
+        self.admin_port = admin_port
 
         default_sql_connection = 'sqlite:///%s/keystone.db' % test_dir
         self.sql_connection = os.environ.get('GLANCE_TEST_KEYSTONE_SQL',
@@ -49,9 +52,9 @@ default_store = sqlite
 log_file = %(log_file)s
 backends = keystone.backends.sqlalchemy
 service-header-mappings = {
-	'nova' : 'X-Server-Management-Url',
-	'swift' : 'X-Storage-Url',
-	'cdn' : 'X-CDN-Management-Url'}
+        'nova' : 'X-Server-Management-Url',
+        'swift' : 'X-Storage-Url',
+        'cdn' : 'X-CDN-Management-Url'}
 service_host = 0.0.0.0
 service_port = %(auth_port)s
 admin_host = 0.0.0.0
@@ -85,7 +88,8 @@ paste.filter_factory = keystone.middleware.url:filter_factory
 paste.filter_factory = keystone.frontends.legacy_token_auth:filter_factory
 
 [filter:RAX-KEY-extension]
-paste.filter_factory = keystone.contrib.extensions.raxkey.frontend:filter_factory
+paste.filter_factory =
+        keystone.contrib.extensions.raxkey.frontend:filter_factory
 """
 
 
@@ -95,9 +99,9 @@ class AuthServer(KeystoneServer):
     """
 
     def __init__(self, server_control, test_dir, auth_port, admin_port):
-        super(KeystoneServer, self).__init__(server_control, 'auth',
-                                             test_dir, auth_port,
-                                             auth_port, admin_port)
+        super(AuthServer, self).__init__(server_control, 'auth',
+                                         test_dir, auth_port,
+                                         auth_port, admin_port)
 
 
 class AdminServer(KeystoneServer):
@@ -106,9 +110,9 @@ class AdminServer(KeystoneServer):
     """
 
     def __init__(self, server_control, test_dir, auth_port, admin_port):
-        super(KeystoneServer, self).__init__(server_control, 'admin',
-                                             test_dir, admin_port,
-                                             auth_port, admin_port)
+        super(AdminServer, self).__init__(server_control, 'admin',
+                                          test_dir, admin_port,
+                                          auth_port, admin_port)
 
 
 def conf_patch(server, **subs):
@@ -194,10 +198,14 @@ class KeystoneTests(functional.FunctionalTest):
         conf_patch(self.api_server, auth_port=self.auth_port)
         conf_patch(self.registry_server, auth_port=self.auth_port)
 
+        # May need to create the test directory
+        if not os.path.isdir(self.test_dir):
+            os.mkdir(self.test_dir)
+
         # Also copy over the keystone db
         base_db = os.path.join(os.path.dirname(__file__), 'data',
                                'keystone.db')
-        shutil.copy(base_db, self.test_dir)
+        shutil.copy(base_db, os.path.join(self.test_dir, 'keystone.db'))
 
     def tearDown(self):
         super(KeystoneTests, self).tearDown()

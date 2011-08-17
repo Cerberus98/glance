@@ -103,7 +103,14 @@ def execute(cmd, raise_error=True):
 
     # Make sure that we use the programs in the
     # current source directory's bin/ directory.
-    env['PATH'] = os.path.join(os.getcwd(), 'bin') + ':' + env['PATH']
+    path_ext = [os.path.join(os.getcwd(), 'bin')]
+
+    # Also jack in the path cmd comes from, if it's absolute
+    executable = cmd.split()[0]
+    if os.path.isabs(executable):
+        path_ext.append(os.path.dirname(executable))
+
+    env['PATH'] = ':'.join(path_ext) + ':' + env['PATH']
     process = subprocess.Popen(cmd,
                                shell=True,
                                stdin=subprocess.PIPE,
