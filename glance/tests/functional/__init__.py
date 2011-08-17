@@ -80,6 +80,7 @@ class Server(object):
         self.bind_port = port
         self.conf_file = None
         self.conf_base = None
+        self.server_control = './bin/glance-control'
 
     def start(self, **kwargs):
         """
@@ -106,7 +107,7 @@ class Server(object):
         self.conf_file = conf_file
         self.conf_file_name = conf_file.name
 
-        cmd = ("./bin/glance-control %(server_name)s start "
+        cmd = ("%(server_control)s %(server_name)s start "
                "%(conf_file_name)s --pid-file=%(pid_file)s"
                % self.__dict__)
         return execute(cmd)
@@ -115,7 +116,7 @@ class Server(object):
         """
         Spin down the server.
         """
-        cmd = ("./bin/glance-control %(server_name)s stop "
+        cmd = ("%(server_control)s %(server_name)s stop "
                "%(conf_file_name)s --pid-file=%(pid_file)s"
                % self.__dict__)
         return execute(cmd)
@@ -286,10 +287,9 @@ class FunctionalTest(unittest.TestCase):
             # We destroy the test data store between each test case,
             # and recreate it, which ensures that we have no side-effects
             # from the tests
-            self._reset_database()
+            self._reset_database(self.registry_server.sql_connection)
 
-    def _reset_database(self):
-        conn_string = self.registry_server.sql_connection
+    def _reset_database(self, conn_string):
         conn_pieces = urlparse.urlparse(conn_string)
         if conn_string.startswith('sqlite'):
             # We can just delete the SQLite database, which is
