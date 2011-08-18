@@ -23,7 +23,7 @@ import shutil
 import time
 
 from glance.tests import functional
-from glance.tests.utils import find_executable
+from glance.tests.utils import execute, find_executable
 
 
 class KeystoneServer(functional.Server):
@@ -209,25 +209,17 @@ class KeystoneTests(functional.FunctionalTest):
 
         # Need to add keystone python path to the environment for
         # glance
+        self.exec_env = None
         if 'GLANCE_TEST_KEYSTONE_PATH' in os.environ:
             def augment_python_path(currpath):
                 if not currpath:
                     return os.environ['GLANCE_TEST_KEYSTONE_PATH']
                 return (os.environ['GLANCE_TEST_KEYSTONE_PATH'] +
                         ':' + currpath)
-            exec_env = dict(PYTHONPATH=augment_python_path)
-            self.api_server.exec_env = exec_env
-            self.registry_server.exec_env = exec_env
+            self.exec_env = dict(PYTHONPATH=augment_python_path)
+            self.api_server.exec_env = self.exec_env
+            self.registry_server.exec_env = self.exec_env
             # Keystone can take care of itself on this score
-
-        # May need to create the test directory
-        if not os.path.isdir(self.test_dir):
-            os.mkdir(self.test_dir)
-
-        # Also copy over the keystone db
-        base_db = os.path.join(os.path.dirname(__file__), 'data',
-                               'keystone.db')
-        shutil.copy(base_db, os.path.join(self.test_dir, 'keystone.db'))
 
     def tearDown(self):
         super(KeystoneTests, self).tearDown()
@@ -246,6 +238,15 @@ class KeystoneTests(functional.FunctionalTest):
         """
         # Start with the Glance servers
         super(KeystoneTests, self).start_servers(**kwargs)
+
+        # Set up the data store
+        keystone_conf = self.auth_server.write_conf(**kwargs)
+        if not os.path.isdir(self.test_dir):
+            os.mkdir(self.test_dir)
+        datafile = os.path.join(os.path.dirname(__file__), 'data',
+                                'keystone_data.py')
+        execute("python %s -c %s" % (datafile, keystone_conf),
+                no_venv=True, exec_env=self.exec_env)
 
         # Start keystone-auth
         exitcode, out, err = self.auth_server.start(**kwargs)

@@ -84,15 +84,14 @@ class Server(object):
         self.server_control = './bin/glance-control'
         self.exec_env = None
 
-    def start(self, **kwargs):
+    def write_conf(self, **kwargs):
         """
-        Starts the server.
+        Writes the configuration file for the server to its intended
+        destination.  Returns the name of the configuration file.
+        """
 
-        Any kwargs passed to this method will override the configuration
-        value in the conf file used in starting the servers.
-        """
         if self.conf_file:
-            raise RuntimeError("Server configuration file already exists!")
+            return self.conf_file_name
         if not self.conf_base:
             raise RuntimeError("Subclass did not populate config_base!")
 
@@ -108,6 +107,19 @@ class Server(object):
         conf_file.flush()
         self.conf_file = conf_file
         self.conf_file_name = conf_file.name
+
+        return self.conf_file_name
+
+    def start(self, **kwargs):
+        """
+        Starts the server.
+
+        Any kwargs passed to this method will override the configuration
+        value in the conf file used in starting the servers.
+        """
+
+        # Ensure the configuration file is written
+        self.write_conf(**kwargs)
 
         cmd = ("%(server_control)s %(server_name)s start "
                "%(conf_file_name)s --pid-file=%(pid_file)s"
