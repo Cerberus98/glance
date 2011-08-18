@@ -76,11 +76,13 @@ class Server(object):
         """
         self.verbose = True
         self.debug = True
+        self.no_venv = False
         self.test_dir = test_dir
         self.bind_port = port
         self.conf_file = None
         self.conf_base = None
         self.server_control = './bin/glance-control'
+        self.exec_env = None
 
     def start(self, **kwargs):
         """
@@ -110,7 +112,7 @@ class Server(object):
         cmd = ("%(server_control)s %(server_name)s start "
                "%(conf_file_name)s --pid-file=%(pid_file)s"
                % self.__dict__)
-        return execute(cmd)
+        return execute(cmd, no_venv=self.no_venv, exec_env=self.exec_env)
 
     def stop(self):
         """
@@ -119,7 +121,7 @@ class Server(object):
         cmd = ("%(server_control)s %(server_name)s stop "
                "%(conf_file_name)s --pid-file=%(pid_file)s"
                % self.__dict__)
-        return execute(cmd)
+        return execute(cmd, no_venv=self.no_venv, exec_env=self.exec_env)
 
 
 class ApiServer(Server):

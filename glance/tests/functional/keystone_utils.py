@@ -34,6 +34,8 @@ class KeystoneServer(functional.Server):
     def __init__(self, server_control, server_name, test_dir, port,
                  auth_port, admin_port):
         super(KeystoneServer, self).__init__(test_dir, port)
+        self.no_venv = True
+
         self.server_control = server_control
         self.server_name = server_name
         self.auth_port = auth_port
@@ -165,8 +167,11 @@ class KeystoneTests(functional.FunctionalTest):
         if not self.inited:
             # Try looking up the keystone executable
             if self.KEYSTONE is None:
-                cmdname = os.environ.get('GLANCE_TEST_KEYSTONE_CONTROL',
-                                         'keystone-control')
+                bindir = os.environ.get('GLANCE_TEST_KEYSTONE_BIN')
+                if bindir is not None:
+                    cmdname = os.path.join(bindir, 'keystone-control')
+                else:
+                    cmdname = 'keystone-control'
                 KeystoneTests.KEYSTONE = find_executable(cmdname)
 
             # We're now initialized
@@ -197,6 +202,19 @@ class KeystoneTests(functional.FunctionalTest):
         # integration
         conf_patch(self.api_server, auth_port=self.auth_port)
         conf_patch(self.registry_server, auth_port=self.auth_port)
+
+        # Need to add keystone python path to the environment for
+        # glance
+        if 'GLANCE_TEST_KEYSTONE_PATH' in os.environ:
+            def augment_python_path(currpath):
+                if not currpath:
+                    return os.environ['GLANCE_TEST_KEYSTONE_PATH']
+                return (os.environ['GLANCE_TEST_KEYSTONE_PATH'] +
+                        ':' + currpath)
+            exec_env = dict(PYTHONPATH=augment_python_path)
+            self.api_server.exec_env = exec_env
+            self.registry_server.exec_env = exec_env
+            # Keystone can take care of itself on this score
 
         # May need to create the test directory
         if not os.path.isdir(self.test_dir):
