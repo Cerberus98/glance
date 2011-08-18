@@ -145,6 +145,7 @@ class ApiServer(Server):
         self.s3_store_secret_key = ""
         self.s3_store_bucket = ""
         self.delayed_delete = delayed_delete
+        self.owner_is_tenant = True
         self.conf_base = """[DEFAULT]
 verbose = %(verbose)s
 debug = %(debug)s
@@ -160,6 +161,7 @@ s3_store_access_key = %(s3_store_access_key)s
 s3_store_secret_key = %(s3_store_secret_key)s
 s3_store_bucket = %(s3_store_bucket)s
 delayed_delete = %(delayed_delete)s
+owner_is_tenant = %(owner_is_tenant)s
 
 [pipeline:glance-api]
 pipeline = versionnegotiation context apiv1app
@@ -198,6 +200,7 @@ class RegistryServer(Server):
         self.pid_file = os.path.join(self.test_dir,
                                          "registry.pid")
         self.log_file = os.path.join(self.test_dir, "registry.log")
+        self.owner_is_tenant = True
         self.conf_base = """[DEFAULT]
 verbose = %(verbose)s
 debug = %(debug)s
@@ -208,6 +211,7 @@ sql_connection = %(sql_connection)s
 sql_idle_timeout = 3600
 api_limit_max = 1000
 limit_param_default = 25
+owner_is_tenant = %(owner_is_tenant)s
 
 [pipeline:glance-registry]
 pipeline = context registryapp
