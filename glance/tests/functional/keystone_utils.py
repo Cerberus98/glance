@@ -140,9 +140,9 @@ service_protocol = http
 service_host = 127.0.0.1
 service_port = %%(bind_port)s
 auth_host = 127.0.0.1
-auth_port = %(auth_port)s
+auth_port = %(admin_port)s
 auth_protocol = http
-auth_uri = http://127.0.0.1:%(auth_port)s/
+auth_uri = http://127.0.0.1:%(admin_port)s/
 admin_token = 999888777666
 delay_auth_decision = 1
 
@@ -200,8 +200,12 @@ class KeystoneTests(functional.FunctionalTest):
 
         # Have to patch the api and registry config files for keystone
         # integration
-        conf_patch(self.api_server, auth_port=self.auth_port)
-        conf_patch(self.registry_server, auth_port=self.auth_port)
+        conf_patch(self.api_server, auth_port=self.auth_port,
+                   admin_port=self.admin_port)
+        conf_patch(self.registry_server, auth_port=self.auth_port,
+                   admin_port=self.admin_port)
+        self.registry_server.conf_base += (
+            'context_class = glance.registry.context.RequestContext\n')
 
         # Need to add keystone python path to the environment for
         # glance
