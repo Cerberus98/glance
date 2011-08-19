@@ -28,17 +28,17 @@ FIVE_KB = 5 * 1024
 FIVE_GB = 5 * 1024 * 1024 * 1024
 
 
-class TestPrivateImages(keystone_utils.KeystoneTests):
+class TestPrivateImagesApi(keystone_utils.KeystoneTests):
     """
     Functional tests to verify private images functionality.
     """
 
     @skip_if_disabled
-    def test_private_images_api(self):
+    def test_private_images_notadmin(self):
         """
-        Test that we can upload an image and that it gets the correct
-        owner and is_public settings, and that we can manipulate these
-        settings under the correct sequence of manipulations.
+        Test that we can upload an owned image; that we can manipulate
+        its is_public setting; and that appropriate authorization
+        checks are applied to other (non-admin) users.
         """
         self.cleanup()
         self.start_servers()
