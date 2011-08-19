@@ -112,6 +112,11 @@ def image_destroy(context, image_id):
     session = get_session()
     with session.begin():
         image_ref = image_get(context, image_id, session=session)
+
+        # Perform authorization check
+        if not context.is_image_mutable(image_ref):
+            raise exception.NotAuthorized("You do not own that image")
+
         image_ref.delete(session=session)
 
         for prop_ref in image_ref.properties:
@@ -320,6 +325,10 @@ def _image_update(context, values, image_id, purge_props=False):
 
         if image_id:
             image_ref = image_get(context, image_id, session=session)
+
+            # Perform authorization check
+            if not context.is_image_mutable(image_ref):
+                raise exception.NotAuthorized("You do not own that image")
         else:
             if 'size' in values:
                 values['size'] = int(values['size'])

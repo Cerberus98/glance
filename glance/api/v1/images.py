@@ -549,6 +549,12 @@ class Controller(api.BaseController):
                 logger.error(line)
             self.notifier.error('image.update', msg)
             raise HTTPBadRequest(msg, request=req, content_type="text/plain")
+        except exception.NotFound, e:
+            msg = ("Failed to find image to update: %(e)s" % locals())
+            for line in msg.split('\n'):
+                logger.info(line)
+            self.notifier.info('image.update', msg)
+            raise HTTPNotFound(msg, request=req, content_type="text/plain")
         else:
             self.notifier.info('image.update', image_meta)
 
@@ -578,11 +584,19 @@ class Controller(api.BaseController):
         # of a saving or queued image, therefore don't ask a backend
         # to delete the image if the backend doesn't yet store it.
         # See https://bugs.launchpad.net/glance/+bug/747799
-        if image['location']:
-            schedule_delete_from_backend(image['location'], self.options,
-                                         req.context, id)
-        registry.delete_image_metadata(self.options, req.context, id)
-        self.notifier.info('image.delete', id)
+        try:
+            if image['location']:
+                schedule_delete_from_backend(image['location'], self.options,
+                                             req.context, id)
+            registry.delete_image_metadata(self.options, req.context, id)
+        except exception.NotFound, e:
+            msg = ("Failed to find image to delete: %(e)s" % locals())
+            for line in msg.split('\n'):
+                logger.info(line)
+            self.notifier.info('image.delete', msg)
+            raise HTTPNotFound(msg, request=req, content_type="text/plain")
+        else:
+            self.notifier.info('image.delete', id)
 
     def members(self, req, image_id):
         """
