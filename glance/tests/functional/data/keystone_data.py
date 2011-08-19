@@ -19,12 +19,13 @@ import keystone.manage
 
 DEFAULT_FIXTURE = [
 # Tenants
+    ('tenant', 'add', 'openstack'),
     ('tenant', 'add', 'pattieblack'),
     ('tenant', 'add', 'froggy'),
 # Users
     ('user', 'add', 'pattieblack', 'secrete', 'pattieblack'),
     ('user', 'add', 'froggy', 'secrete', 'froggy'),
-    ('user', 'add', 'admin', 'secrete', 'pattieblack'),
+    ('user', 'add', 'admin', 'secrete', 'openstack'),
 # Roles
     ('role', 'add', 'Admin'),
     ('role', 'add', 'KeystoneServiceAdmin'),
@@ -35,7 +36,7 @@ DEFAULT_FIXTURE = [
      '2015-02-05T00:00'),
     ('token', 'add', '383344566788', 'froggy', 'froggy',
      '2015-02-05T00:00'),
-    ('token', 'add', '999888777666', 'admin', 'pattieblack',
+    ('token', 'add', '999888777666', 'admin', 'openstack',
      '2015-02-05T00:00'),
 # Keeping for compatibility for a while till dashboard catches up
     ('endpointTemplates', 'add', 'RegionOne', 'swift',
@@ -76,6 +77,11 @@ DEFAULT_FIXTURE = [
         'http://cdn.admin-nets.local/v1.1/%tenant_id%',
         'http://127.0.0.1:7777/v1.1/%tenant_id%', '1', '0'),
 # Tenant endpointsGlobal endpoint not added
+    ('endpoint', 'add', 'openstack', '1'),
+    ('endpoint', 'add', 'openstack', '2'),
+    ('endpoint', 'add', 'openstack', '3'),
+    ('endpoint', 'add', 'openstack', '4'),
+    ('endpoint', 'add', 'openstack', '5'),
     ('endpoint', 'add', 'pattieblack', '1'),
     ('endpoint', 'add', 'pattieblack', '2'),
     ('endpoint', 'add', 'pattieblack', '3'),
