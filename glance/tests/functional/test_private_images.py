@@ -480,3 +480,203 @@ class TestPrivateImagesApi(keystone_utils.KeystoneTests):
         self.assertEqual(response.status, 404)
 
         self.stop_servers()
+
+    @skip_if_disabled
+    def test_private_images_anon(self):
+        """
+        Test that anonymous users can access images but not manipulate
+        them.
+        """
+        self.cleanup()
+        self.start_servers()
+
+        # Make sure anonymous user can't push up an image
+        image_data = "*" * FIVE_KB
+        headers = {'Content-Type': 'application/octet-stream',
+                   'X-Image-Meta-Name': 'Image1'}
+        path = "http://%s:%d/v1/images" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'POST', headers=headers,
+                                         body=image_data)
+        self.assertEqual(response.status, 403)
+
+        # Now push up an image for anonymous user to try to access
+        image_data = "*" * FIVE_KB
+        headers = {'Content-Type': 'application/octet-stream',
+                   'X-Auth-Token': keystone_utils.pattieblack_token,
+                   'X-Image-Meta-Name': 'Image1'}
+        path = "http://%s:%d/v1/images" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'POST', headers=headers,
+                                         body=image_data)
+        self.assertEqual(response.status, 201)
+        data = json.loads(content)
+        self.assertEqual(data['image']['id'], 1)
+        self.assertEqual(data['image']['size'], FIVE_KB)
+        self.assertEqual(data['image']['name'], "Image1")
+        self.assertEqual(data['image']['is_public'], False)
+        self.assertEqual(data['image']['owner'], 'pattieblack')
+
+        # Make sure anonymous user can't list the image
+        path = "http://%s:%d/v1/images" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'GET')
+        self.assertEqual(response.status, 200)
+        self.assertEqual(content, '{"images": []}')
+
+        # Shouldn't show up in the detail list, either
+        path = "http://%s:%d/v1/images/detail" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'GET')
+        self.assertEqual(response.status, 200)
+        self.assertEqual(content, '{"images": []}')
+
+        # Also check that anonymous can't get the image metadata
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'HEAD')
+        self.assertEqual(response.status, 404)
+
+        # Nor the image, either.
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'GET')
+        self.assertEqual(response.status, 404)
+
+        # Anonymous shouldn't be able to make the image public...
+        headers = {'X-Image-Meta-Is-Public': 'True'}
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'PUT', headers=headers)
+        self.assertEqual(response.status, 403)
+
+        # Nor change ownership...
+        headers = {'X-Image-Meta-Owner': 'froggy'}
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'PUT', headers=headers)
+        self.assertEqual(response.status, 403)
+
+        # Nor even delete it...
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'DELETE')
+        self.assertEqual(response.status, 403)
+
+        # Now, let's use our admin credentials and change the
+        # ownership to None...
+        headers = {'X-Auth-Token': keystone_utils.admin_token,
+                   'X-Image-Meta-Owner': ''}
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'PUT', headers=headers)
+        self.assertEqual(response.status, 200)
+        data = json.loads(content)
+        self.assertEqual(data['image']['name'], "Image1")
+        self.assertEqual(data['image']['is_public'], False)
+        self.assertEqual(data['image']['owner'], None)
+
+        # Anonymous user still can't list image...
+        path = "http://%s:%d/v1/images" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'GET')
+        self.assertEqual(response.status, 200)
+        self.assertEqual(content, '{"images": []}')
+
+        # Nor see it in details...
+        path = "http://%s:%d/v1/images/detail" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'GET')
+        self.assertEqual(response.status, 200)
+        self.assertEqual(content, '{"images": []}')
+
+        # But they should be able to access the metadata...
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'HEAD')
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response['x-image-meta-name'], "Image1")
+        self.assertEqual(response['x-image-meta-is_public'], "False")
+        self.assertEqual(response['x-image-meta-owner'], '')
+
+        # And even the image itself...
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'GET')
+        self.assertEqual(response.status, 200)
+        self.assertEqual(content, "*" * FIVE_KB)
+        self.assertEqual(response['x-image-meta-name'], "Image1")
+        self.assertEqual(response['x-image-meta-is_public'], "False")
+        self.assertEqual(response['x-image-meta-owner'], '')
+
+        # Anonymous still shouldn't be able to make the image
+        # public...
+        headers = {'X-Image-Meta-Is-Public': 'True'}
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'PUT', headers=headers)
+        self.assertEqual(response.status, 403)
+
+        # Nor change ownership...
+        headers = {'X-Image-Meta-Owner': 'froggy'}
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'PUT', headers=headers)
+        self.assertEqual(response.status, 403)
+
+        # Nor even delete it...
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'DELETE')
+        self.assertEqual(response.status, 403)
+
+        # Now make the image public...
+        headers = {'X-Auth-Token': keystone_utils.admin_token,
+                   'X-Image-Meta-Is-Public': 'True'}
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'PUT', headers=headers)
+        self.assertEqual(response.status, 200)
+        data = json.loads(content)
+        self.assertEqual(data['image']['name'], "Image1")
+        self.assertEqual(data['image']['is_public'], True)
+        self.assertEqual(data['image']['owner'], None)
+
+        # Now the user should see it in the list...
+        path = "http://%s:%d/v1/images" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'GET')
+        self.assertEqual(response.status, 200)
+        data = json.loads(content)
+        self.assertEqual(len(data['images']), 1)
+        self.assertEqual(data['images'][0]['id'], 1)
+        self.assertEqual(data['images'][0]['size'], FIVE_KB)
+        self.assertEqual(data['images'][0]['name'], "Image1")
+
+        # Especially in the details...
+        path = "http://%s:%d/v1/images/detail" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'GET')
+        self.assertEqual(response.status, 200)
+        data = json.loads(content)
+        self.assertEqual(len(data['images']), 1)
+        self.assertEqual(data['images'][0]['id'], 1)
+        self.assertEqual(data['images'][0]['size'], FIVE_KB)
+        self.assertEqual(data['images'][0]['name'], "Image1")
+        self.assertEqual(data['images'][0]['is_public'], True)
+        self.assertEqual(data['images'][0]['owner'], None)
+
+        # But still can't change ownership...
+        headers = {'X-Image-Meta-Owner': 'froggy'}
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'PUT', headers=headers)
+        self.assertEqual(response.status, 403)
+
+        # Or delete it...
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'DELETE')
+        self.assertEqual(response.status, 403)
+
+        self.stop_servers()
