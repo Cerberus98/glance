@@ -264,3 +264,219 @@ class TestPrivateImagesApi(keystone_utils.KeystoneTests):
         self.assertEqual(response.status, 200)
 
         self.stop_servers()
+
+    @skip_if_disabled
+    def test_private_images_admin(self):
+        """
+        Test that admin users can manipulate is_public and owner
+        settings on an image.
+        """
+        self.cleanup()
+        self.start_servers()
+
+        # Need to push an image up
+        image_data = "*" * FIVE_KB
+        headers = {'Content-Type': 'application/octet-stream',
+                   'X-Auth-Token': keystone_utils.pattieblack_token,
+                   'X-Image-Meta-Name': 'Image1'}
+        path = "http://%s:%d/v1/images" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'POST', headers=headers,
+                                         body=image_data)
+        self.assertEqual(response.status, 201)
+        data = json.loads(content)
+        self.assertEqual(data['image']['id'], 1)
+        self.assertEqual(data['image']['size'], FIVE_KB)
+        self.assertEqual(data['image']['name'], "Image1")
+        self.assertEqual(data['image']['is_public'], False)
+        self.assertEqual(data['image']['owner'], 'pattieblack')
+
+        # Make sure admin does not see image by default
+        headers = {'X-Auth-Token': keystone_utils.admin_token}
+        path = "http://%s:%d/v1/images" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'GET', headers=headers)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(content, '{"images": []}')
+
+        # Shouldn't show up in the detail list, either
+        headers = {'X-Auth-Token': keystone_utils.froggy_token}
+        path = "http://%s:%d/v1/images/detail" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'GET', headers=headers)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(content, '{"images": []}')
+
+        # Admin should see the image if we're looking for private
+        # images specifically
+        headers = {'X-Auth-Token': keystone_utils.admin_token}
+        path = "http://%s:%d/v1/images?is_public=false" % ("0.0.0.0",
+                                                           self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'GET', headers=headers)
+        self.assertEqual(response.status, 200)
+        data = json.loads(content)
+        self.assertEqual(len(data['images']), 1)
+        self.assertEqual(data['images'][0]['id'], 1)
+        self.assertEqual(data['images'][0]['size'], FIVE_KB)
+        self.assertEqual(data['images'][0]['name'], "Image1")
+
+        # Also in the detail list...
+        headers = {'X-Auth-Token': keystone_utils.admin_token}
+        path = ("http://%s:%d/v1/images/detail?is_public=false" %
+                ("0.0.0.0", self.api_port))
+        http = httplib2.Http()
+        response, content = http.request(path, 'GET', headers=headers)
+        self.assertEqual(response.status, 200)
+        data = json.loads(content)
+        self.assertEqual(len(data['images']), 1)
+        self.assertEqual(data['images'][0]['id'], 1)
+        self.assertEqual(data['images'][0]['size'], FIVE_KB)
+        self.assertEqual(data['images'][0]['name'], "Image1")
+        self.assertEqual(data['images'][0]['is_public'], False)
+        self.assertEqual(data['images'][0]['owner'], 'pattieblack')
+
+        # Admin should be able to get the image metadata
+        headers = {'X-Auth-Token': keystone_utils.admin_token}
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'HEAD', headers=headers)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response['x-image-meta-name'], "Image1")
+        self.assertEqual(response['x-image-meta-is_public'], "False")
+        self.assertEqual(response['x-image-meta-owner'], "pattieblack")
+
+        # And of course the image itself
+        headers = {'X-Auth-Token': keystone_utils.admin_token}
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'GET', headers=headers)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(content, "*" * FIVE_KB)
+        self.assertEqual(response['x-image-meta-name'], "Image1")
+        self.assertEqual(response['x-image-meta-is_public'], "False")
+        self.assertEqual(response['x-image-meta-owner'], "pattieblack")
+
+        # Admin should be able to manipulate is_public
+        headers = {'X-Auth-Token': keystone_utils.admin_token,
+                   'X-Image-Meta-Is-Public': 'True'}
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'PUT', headers=headers)
+        self.assertEqual(response.status, 200)
+        data = json.loads(content)
+        self.assertEqual(data['image']['name'], "Image1")
+        self.assertEqual(data['image']['is_public'], True)
+        self.assertEqual(data['image']['owner'], 'pattieblack')
+
+        # Admin should also be able to change the ownership of the
+        # image
+        headers = {'X-Auth-Token': keystone_utils.admin_token,
+                   'X-Image-Meta-Owner': 'froggy'}
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'PUT', headers=headers)
+        self.assertEqual(response.status, 200)
+        data = json.loads(content)
+        self.assertEqual(data['image']['name'], "Image1")
+        self.assertEqual(data['image']['is_public'], True)
+        self.assertEqual(data['image']['owner'], 'froggy')
+
+        # Even setting it to no owner
+        headers = {'X-Auth-Token': keystone_utils.admin_token,
+                   'X-Image-Meta-Owner': ''}
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'PUT', headers=headers)
+        self.assertEqual(response.status, 200)
+        data = json.loads(content)
+        self.assertEqual(data['image']['name'], "Image1")
+        self.assertEqual(data['image']['is_public'], True)
+        self.assertEqual(data['image']['owner'], None)
+
+        # Make sure pattieblack can see it, since it's unowned but
+        # public
+        headers = {'X-Auth-Token': keystone_utils.pattieblack_token}
+        path = "http://%s:%d/v1/images" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'GET', headers=headers)
+        self.assertEqual(response.status, 200)
+        data = json.loads(content)
+        self.assertEqual(len(data['images']), 1)
+        self.assertEqual(data['images'][0]['id'], 1)
+        self.assertEqual(data['images'][0]['size'], FIVE_KB)
+        self.assertEqual(data['images'][0]['name'], "Image1")
+
+        # But if we change it back to private...
+        headers = {'X-Auth-Token': keystone_utils.admin_token,
+                   'X-Image-Meta-Is-Public': 'False'}
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'PUT', headers=headers)
+        self.assertEqual(response.status, 200)
+        data = json.loads(content)
+        self.assertEqual(data['image']['name'], "Image1")
+        self.assertEqual(data['image']['is_public'], False)
+        self.assertEqual(data['image']['owner'], None)
+
+        # Now pattieblack can't see it in the list...
+        headers = {'X-Auth-Token': keystone_utils.pattieblack_token}
+        path = "http://%s:%d/v1/images" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'GET', headers=headers)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(content, '{"images": []}')
+
+        # Or in the details list...
+        headers = {'X-Auth-Token': keystone_utils.pattieblack_token}
+        path = "http://%s:%d/v1/images/detail" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'GET', headers=headers)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(content, '{"images": []}')
+
+        # But pattieblack should be able to access the image metadata
+        headers = {'X-Auth-Token': keystone_utils.pattieblack_token}
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'HEAD', headers=headers)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response['x-image-meta-name'], "Image1")
+        self.assertEqual(response['x-image-meta-is_public'], "False")
+        self.assertEqual(response['x-image-meta-owner'], '')
+
+        # And of course the image itself
+        headers = {'X-Auth-Token': keystone_utils.pattieblack_token}
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'GET', headers=headers)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(content, "*" * FIVE_KB)
+        self.assertEqual(response['x-image-meta-name'], "Image1")
+        self.assertEqual(response['x-image-meta-is_public'], "False")
+        self.assertEqual(response['x-image-meta-owner'], '')
+
+        # Pattieblack can't change is-public, though
+        headers = {'X-Auth-Token': keystone_utils.pattieblack_token,
+                   'X-Image-Meta-Is-Public': 'True'}
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'PUT', headers=headers)
+        self.assertEqual(response.status, 404)
+
+        # Or give themselves ownership
+        headers = {'X-Auth-Token': keystone_utils.pattieblack_token,
+                   'X-Image-Meta-Owner': 'pattieblack'}
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'PUT', headers=headers)
+        self.assertEqual(response.status, 404)
+
+        # They can't delete it, either
+        headers = {'X-Auth-Token': keystone_utils.pattieblack_token}
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'DELETE', headers=headers)
+        self.assertEqual(response.status, 404)
+
+        self.stop_servers()
