@@ -336,6 +336,10 @@ def _image_update(context, values, image_id, purge_props=False):
             values['is_public'] = bool(values.get('is_public', False))
             image_ref = models.Image()
 
+        # Need to canonicalize ownership
+        if 'owner' in values and not values['owner']:
+            values['owner'] = None
+
         if image_id:
             # Don't drop created_at if we're passing it in...
             _drop_protected_attrs(models.Image, values)
