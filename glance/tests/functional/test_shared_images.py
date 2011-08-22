@@ -96,3 +96,6 @@ class TestSharedImagesApi(keystone_utils.KeystoneTests):
         response, content = http.request(path, 'GET', headers=headers)
         self.assertEqual(response.status, 200)
         self.assertEqual(content, '{"images": []}')
+
+    def test_unshare_image(self):
+        pass
