@@ -29,6 +29,7 @@ from glance.tests.utils import execute, find_executable
 pattieblack_token = '887665443383'
 froggy_token = '383344566788'
 admin_token = '999888777666'
+bacon_token = '111111111111'
 
 
 class KeystoneServer(functional.Server):
