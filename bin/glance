@@ -135,6 +135,8 @@ def print_image_formatted(client, image):
     print "Location: %s" % image['location']
     print "Disk format: %s" % image['disk_format']
     print "Container format: %s" % image['container_format']
+    if image['owner']:
+        print "Owner: %s" % image['owner']
     if len(image['properties']) > 0:
         for k, v in image['properties'].items():
             print "Property '%s': %s" % (k, v)
