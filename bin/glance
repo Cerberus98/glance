@@ -321,10 +321,10 @@ to spell field names correctly. :)"""
             fields.pop(field)
 
     base_image_fields = ['disk_format', 'container_format', 'name',
-                         'location']
+                         'location', 'owner']
     for field in base_image_fields:
         fvalue = fields.pop(field, None)
-        if fvalue:
+        if fvalue is not None:
             image_meta[field] = fvalue
 
     # Have to handle "boolean" values specially...
