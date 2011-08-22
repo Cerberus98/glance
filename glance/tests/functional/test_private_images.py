@@ -680,3 +680,93 @@ class TestPrivateImagesApi(keystone_utils.KeystoneTests):
         self.assertEqual(response.status, 403)
 
         self.stop_servers()
+
+
+class TestPrivateImagesCli(keystone_utils.KeystoneTests):
+    """
+    Functional tests to verify private images functionality through
+    bin/glance.
+    """
+
+    @skip_if_disabled
+    def test_glance_cli(self):
+        """
+        Test that we can upload an owned image; that we can manipulate
+        its is_public setting; and that appropriate authorization
+        checks are applied to other (non-admin) users.
+        """
+        self.cleanup()
+        self.start_servers()
+
+        # Add a non-public image
+        cmd = ("echo testdata | bin/glance --port=%d --auth_token=%s add "
+               "name=MyImage" %
+               (self.api_port, keystone_utils.pattieblack_token))
+        exitcode, out, err = execute(cmd)
+
+        self.assertEqual(0, exitcode)
+        self.assertEqual('Added new image with ID: 1', out.strip())
+
+        # Verify the attributes of the image
+        headers = {'X-Auth-Token': keystone_utils.pattieblack_token}
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'HEAD', headers=headers)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response['x-image-meta-name'], "MyImage")
+        self.assertEqual(response['x-image-meta-is_public'], "False")
+        self.assertEqual(response['x-image-meta-owner'], "pattieblack")
+
+        # Test that we can update is_public through the CLI
+        cmd = ("bin/glance --port=%d --auth_token=%s update 1 is_public=True" %
+               (self.api_port, keystone_utils.pattieblack_token))
+        exitcode, out, err = execute(cmd)
+
+        self.assertEqual(0, exitcode)
+        self.assertEqual('Updated image 1', out.strip())
+
+        # Verify the appropriate change was made
+        headers = {'X-Auth-Token': keystone_utils.pattieblack_token}
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'HEAD', headers=headers)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response['x-image-meta-name'], "MyImage")
+        self.assertEqual(response['x-image-meta-is_public'], "True")
+        self.assertEqual(response['x-image-meta-owner'], "pattieblack")
+
+        # Test that admin can change the owner
+        cmd = ("bin/glance --port=%d --auth_token=%s update 1 owner=froggy" %
+               (self.api_port, keystone_utils.admin_token))
+        exitcode, out, err = execute(cmd)
+
+        self.assertEqual(0, exitcode)
+        self.assertEqual('Updated image 1', out.strip())
+
+        # Verify the appropriate change was made
+        headers = {'X-Auth-Token': keystone_utils.admin_token}
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'HEAD', headers=headers)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response['x-image-meta-name'], "MyImage")
+        self.assertEqual(response['x-image-meta-is_public'], "True")
+        self.assertEqual(response['x-image-meta-owner'], "froggy")
+
+        # Test that admin can remove the owner
+        cmd = ("bin/glance --port=%d --auth_token=%s update 1 owner=" %
+               (self.api_port, keystone_utils.admin_token))
+        exitcode, out, err = execute(cmd)
+
+        self.assertEqual(0, exitcode)
+        self.assertEqual('Updated image 1', out.strip())
+
+        # Verify the appropriate change was made
+        headers = {'X-Auth-Token': keystone_utils.admin_token}
+        path = "http://%s:%d/v1/images/1" % ("0.0.0.0", self.api_port)
+        http = httplib2.Http()
+        response, content = http.request(path, 'HEAD', headers=headers)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response['x-image-meta-name'], "MyImage")
+        self.assertEqual(response['x-image-meta-is_public'], "True")
+        self.assertEqual(response['x-image-meta-owner'], '')
