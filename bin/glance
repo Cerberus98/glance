@@ -860,7 +860,7 @@ Displays a list of images shared with a given member"""
     c = get_client(options)
 
     try:
-        images = c.get_member_images(member_id)
+        members = c.get_member_images(member_id)
     except exception.NotFound:
         print "No images shared with member %s" % member_id
         return SUCCESS
