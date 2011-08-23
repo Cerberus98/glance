@@ -722,7 +722,6 @@ class Controller(api.BaseController):
         can_share = None
         if body and 'member' in body and 'can_share' in body['member']:
             can_share = bool(body['member']['can_share'])
-
         try:
             registry.add_member(self.options, req.context, image_id, member,
                                 can_share)

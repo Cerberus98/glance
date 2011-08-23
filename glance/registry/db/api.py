@@ -451,6 +451,7 @@ def _image_member_update(context, memb_ref, values, session=None):
 
 def image_member_delete(context, memb_ref, session=None):
     """Delete an ImageMember object"""
+    session = session or get_session()
     memb_ref.update(dict(deleted=True))
     memb_ref.save(session=session)
     return memb_ref

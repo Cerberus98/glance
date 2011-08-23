@@ -40,14 +40,23 @@ class TestSharedImagesApi(keystone_utils.KeystoneTests):
                                           headers=headers,
                                           body=image_data)
         self.assertEqual(response.status, 201)
+        data = json.loads(content)
+        self.assertEqual(data['image']['id'], 1)
+        self.assertEqual(data['image']['size'], FIVE_KB)
+        self.assertEqual(data['image']['name'], "Image1")
+        self.assertEqual(data['image']['is_public'], False)
+        self.assertEqual(data['image']['owner'], 'pattieblack')
         return content
 
     def _request(self, path, method, auth_token, headers=None, body=None):
         http = httplib2.Http()
         headers = headers or {}
         headers['X-Auth-Token'] = auth_token
-        return http.request(path, method, headers=headers,
-                            body=json.dumps(body))
+        if body:
+            return http.request(path, method, headers=headers,
+                                body=body)
+        else:
+            return http.request(path, method, headers=headers)
 
     def test_share_image(self):
         self.cleanup()
@@ -167,11 +176,11 @@ class TestSharedImagesApi(keystone_utils.KeystoneTests):
         data = json.loads(self._push_image())
 
         # Now add froggy as a shared image member
-        body = { 'member': { 'can_share': True }}
+        body = json.dumps({ 'member': { 'can_share': True }})
         path = "http://%s:%d/v1/images/%s/members/%s" % \
                 ("0.0.0.0", self.api_port, data['image']['id'], 'froggy')
         
-        response, _ = self._request(path, 'PUT',
+        response, content = self._request(path, 'PUT',
                                     keystone_utils.pattieblack_token,
                                     body=body)
         self.assertEqual(response.status, 204)
@@ -191,15 +200,14 @@ class TestSharedImagesApi(keystone_utils.KeystoneTests):
 
         # Froggy is going to share with bacon
         path = "http://%s:%d/v1/images/%s/members/%s" % \
-                ("0.0.0.0", self.api_port, data['image']['id'], 'bacon')
+                ("0.0.0.0", self.api_port, image['id'], 'bacon')
         
         response, _ = self._request(path, 'PUT',
-                                    keystone_utils.froggy_token,
-                                    body=body)
+                                    keystone_utils.froggy_token)
         self.assertEqual(response.status, 204)
-        image = data['image']
 
         # Ensure bacon can see the image now
+        path = "http://%s:%d/v1/images" % ("0.0.0.0", self.api_port)
         response, content = self._request(path, 'GET',
                                           keystone_utils.bacon_token)
         self.assertEqual(response.status, 200)
@@ -217,7 +225,31 @@ class TestSharedImagesApi(keystone_utils.KeystoneTests):
 
         # Redundant, but prove prosciutto cannot share it
         path = "http://%s:%d/v1/images/%s/members/%s" % \
-                ("0.0.0.0", self.api_port, data['image']['id'], 'franknbeans')
+                ("0.0.0.0", self.api_port, image['id'], 'franknbeans')
         response, _ = self._request(path, 'PUT',
                                     keystone_utils.prosciutto_token)
         self.assertEqual(response.status, 404)
+
+    def test_get_members(self):
+        self.cleanup()
+        self.start_servers()
+        # First, we need to push an image up
+        data = json.loads(self._push_image())
+
+        # Now add froggy as a shared image member
+        path = "http://%s:%d/v1/images/%s/members/%s" % \
+                ("0.0.0.0", self.api_port, data['image']['id'], 'froggy')
+        
+        response, content = self._request(path, 'PUT',
+                                    keystone_utils.pattieblack_token)
+        self.assertEqual(response.status, 204)
+
+        path = "http://%s:%d/v1/images/%s/members" % \
+                ("0.0.0.0", self.api_port, data['image']['id'])
+        
+        response, content = self._request(path, 'GET',
+                                    keystone_utils.pattieblack_token)
+        self.assertEqual(response.status, 200)
+        body = json.loads(content)
+        self.assertEqual(body['members'][0]['can_share'], False)
+        self.assertEqual(body['members'][0]['member_id'], 'froggy')

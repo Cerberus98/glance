@@ -22,9 +22,13 @@ DEFAULT_FIXTURE = [
     ('tenant', 'add', 'openstack'),
     ('tenant', 'add', 'pattieblack'),
     ('tenant', 'add', 'froggy'),
+    ('tenant', 'add', 'bacon'),
+    ('tenant', 'add', 'prosciutto'),
 # Users
     ('user', 'add', 'pattieblack', 'secrete', 'pattieblack'),
     ('user', 'add', 'froggy', 'secrete', 'froggy'),
+    ('user', 'add', 'bacon', 'secrete', 'bacon'),
+    ('user', 'add', 'prosciutto', 'secrete', 'prosciutto'),
     ('user', 'add', 'admin', 'secrete', 'openstack'),
 # Roles
     ('role', 'add', 'Admin'),
@@ -35,6 +39,10 @@ DEFAULT_FIXTURE = [
     ('token', 'add', '887665443383', 'pattieblack', 'pattieblack',
      '2015-02-05T00:00'),
     ('token', 'add', '383344566788', 'froggy', 'froggy',
+     '2015-02-05T00:00'),
+    ('token', 'add', '111111111111', 'bacon', 'bacon',
+     '2015-02-05T00:00'),
+    ('token', 'add', '222222222222', 'prosciutto', 'prosciutto',
      '2015-02-05T00:00'),
     ('token', 'add', '999888777666', 'admin', 'openstack',
      '2015-02-05T00:00'),
@@ -92,6 +100,16 @@ DEFAULT_FIXTURE = [
     ('endpoint', 'add', 'froggy', '3'),
     ('endpoint', 'add', 'froggy', '4'),
     ('endpoint', 'add', 'froggy', '5'),
+    ('endpoint', 'add', 'bacon', '1'),
+    ('endpoint', 'add', 'bacon', '2'),
+    ('endpoint', 'add', 'bacon', '3'),
+    ('endpoint', 'add', 'bacon', '4'),
+    ('endpoint', 'add', 'bacon', '5'),
+    ('endpoint', 'add', 'prosciutto', '1'),
+    ('endpoint', 'add', 'prosciutto', '2'),
+    ('endpoint', 'add', 'prosciutto', '3'),
+    ('endpoint', 'add', 'prosciutto', '4'),
+    ('endpoint', 'add', 'prosciutto', '5'),
 ]
 
 
