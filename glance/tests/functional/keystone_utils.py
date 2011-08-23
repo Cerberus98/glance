@@ -30,6 +30,8 @@ pattieblack_token = '887665443383'
 froggy_token = '383344566788'
 admin_token = '999888777666'
 bacon_token = '111111111111'
+prosciutto_token = '222222222222'
+
 
 
 class KeystoneServer(functional.Server):

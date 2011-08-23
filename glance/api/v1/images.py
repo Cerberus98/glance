@@ -30,6 +30,7 @@ from webob.exc import (HTTPNotFound,
                        HTTPConflict,
                        HTTPBadRequest,
                        HTTPForbidden,
+                       HTTPNoContent,
                        HTTPUnauthorized)
 
 from glance import api
