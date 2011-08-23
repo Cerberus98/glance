@@ -575,9 +575,14 @@ class Controller(object):
 
         # Look up an existing membership
         try:
-            membership = db_api.image_member_find(req.context,
-                                                  image_id, member)
-            db_api.image_member_delete(req.context, membership)
+            session = db_api.get_session()
+            member_ref = db_api.image_member_find(req.context,
+                                                  image_id,
+                                                  member,
+                                                  session=session)
+            db_api.image_member_delete(req.context,
+                                       member_ref,
+                                       session=session)
         except exception.NotFound:
             pass
 
@@ -648,7 +653,8 @@ def make_member_list(members, **attr_map):
     """
 
     def _fetch_memb(memb, attr_map):
-        return dict([(k, memb[v]) for k, v in attr_map if v in memb.keys()])
+        return dict([(k, memb[v]) for k, v in attr_map.iteritems()
+                                  if v in memb.keys()])
 
     # Return the list of members with the given attribute mapping
     return [_fetch_memb(memb, attr_map) for memb in members]
