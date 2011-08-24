@@ -100,6 +100,78 @@ class TestSharedImagesApi(keystone_utils.KeystoneTests):
         self.assertEqual(response.status, 200)
         self.assertEqual(content, '{"images": []}')
 
+    def test_share_and_replace_members(self):
+        self.cleanup()
+        self.start_servers()
+        # First, we need to push an image up
+        data = json.loads(self._push_image())
+
+        image = data['image']
+        # Now add froggy as a shared image member
+        path = "http://%s:%d/v1/images/%s/members/%s" % \
+                ("0.0.0.0", self.api_port, data['image']['id'], 'froggy')
+        
+        response, _ = self._request(path, 'PUT',
+                                    keystone_utils.pattieblack_token)
+        self.assertEqual(response.status, 204)
+
+        # Ensure pattieblack can still see the image
+        path = "http://%s:%d/v1/images" % ("0.0.0.0", self.api_port)
+        response, content = self._request(path, 'GET',
+                                          keystone_utils.pattieblack_token)
+        self.assertEqual(response.status, 200)
+        data = json.loads(content)
+        self.assertEqual(len(data['images']), 1)
+        self.assertEqual(data['images'][0]['id'], 1)
+        self.assertEqual(data['images'][0]['size'], FIVE_KB)
+        self.assertEqual(data['images'][0]['name'], "Image1")
+
+        # Ensure froggy can see the image now
+        response, content = self._request(path, 'GET',
+                                          keystone_utils.froggy_token)
+        self.assertEqual(response.status, 200)
+        data = json.loads(content)
+        self.assertEqual(len(data['images']), 1)
+        self.assertEqual(data['images'][0]['id'], 1)
+        self.assertEqual(data['images'][0]['size'], FIVE_KB)
+        self.assertEqual(data['images'][0]['name'], "Image1")
+
+        # ensure that no one else can see the image
+        path = "http://%s:%d/v1/images" % ("0.0.0.0", self.api_port)
+        response, content = self._request(path, 'GET',
+                                          keystone_utils.bacon_token)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(content, '{"images": []}')
+
+        # Replace froggy with bacon
+        body = json.dumps({'memberships': [{'member_id': 'bacon', 
+                                            'can_share': False}]})
+        path = "http://%s:%d/v1/images/%s/members" % \
+                ("0.0.0.0", self.api_port, image['id'])
+        
+        response, content = self._request(path, 'PUT',
+                                          keystone_utils.pattieblack_token,
+                                          body=body)
+        self.assertEqual(response.status, 204)
+
+        # Ensure bacon can see the image
+        path = "http://%s:%d/v1/images" % ("0.0.0.0", self.api_port)
+        response, content = self._request(path, 'GET',
+                                          keystone_utils.bacon_token)
+        self.assertEqual(response.status, 200)
+        data = json.loads(content)
+        self.assertEqual(len(data['images']), 1)
+        self.assertEqual(data['images'][0]['id'], 1)
+        self.assertEqual(data['images'][0]['size'], FIVE_KB)
+        self.assertEqual(data['images'][0]['name'], "Image1")
+
+        # ensure that no one else can see the image
+        path = "http://%s:%d/v1/images" % ("0.0.0.0", self.api_port)
+        response, content = self._request(path, 'GET',
+                                          keystone_utils.froggy_token)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(content, '{"images": []}')
+
     def test_unshare_image(self):
         self.cleanup()
         self.start_servers()
