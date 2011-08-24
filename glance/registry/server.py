@@ -411,8 +411,9 @@ class Controller(object):
             raise exc.HTTPUnauthorized("No authenticated user")
 
         # Make sure the image exists
+        session = db_api.get_session()
         try:
-            image = db_api.image_get(req.context, image_id)
+            image = db_api.image_get(req.context, image_id, session=session)
         except exception.NotFound:
             raise exc.HTTPNotFound()
         except exception.NotAuthorized:
@@ -455,7 +456,8 @@ class Controller(object):
             try:
                 membership = db_api.image_member_find(req.context,
                                                       datum['image_id'],
-                                                      datum['member_id'])
+                                                      datum['member'],
+                                                      session=session)
 
                 # Are we overriding can_share?
                 if datum['can_share'] is None:
@@ -477,14 +479,15 @@ class Controller(object):
             if memb['id'] in existing:
                 # Just update the membership in place
                 update = existing[memb['id']]['values']
-                db_api.image_member_update(req.context, memb, update)
+                db_api.image_member_update(req.context, memb, update,
+                                           session=session)
             else:
                 # Outdated one; needs to be deleted
-                db_api.image_member_delete(memb)
+                db_api.image_member_delete(req.context, memb, session=session)
 
         # Now add the non-existant ones
         for memb in add:
-            db_api.image_member_create(req.context, memb)
+            db_api.image_member_create(req.context, memb, session=session)
 
         # Make an appropriate result
         return exc.HTTPNoContent()

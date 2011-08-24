@@ -221,7 +221,8 @@ def image_get_all(context, filters=None, marker=None, limit=None,
         the_filter = [models.Image.is_public == filters['is_public']]
         if filters['is_public'] and context.owner is not None:
             the_filter.extend([(models.Image.owner == context.owner),
-                               models.Image.members.any(member=context.owner)])
+                               models.Image.members.any(member=context.owner,
+                                                        deleted=False)])
         if len(the_filter) > 1:
             query = query.filter(or_(*the_filter))
         else:
