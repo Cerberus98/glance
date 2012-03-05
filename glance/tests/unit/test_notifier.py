@@ -109,10 +109,11 @@ class TestRabbitNotifier(unittest.TestCase):
                                                 "fake_topic"})
         self.notifier = notifier.Notifier(self.conf)
 
-    def _send_message(self, message, routing_key):
+    def _send_message(self, message, routing_key, content_type=None):
         self.called = {
             "message": message,
-            "routing_key": routing_key
+            "routing_key": routing_key,
+            "content_type": content_type
         }
 
     def test_warn(self):
@@ -124,6 +125,7 @@ class TestRabbitNotifier(unittest.TestCase):
         self.assertEquals("test_message", self.called["message"]["payload"])
         self.assertEquals("WARN", self.called["message"]["priority"])
         self.assertEquals("fake_topic.warn", self.called["routing_key"])
+        self.assertEquals("application/json", self.called["content_type"])
 
     def test_info(self):
         self.notifier.info("test_event", "test_message")
